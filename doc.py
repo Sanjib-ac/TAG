@@ -20,7 +20,7 @@ APPLY_PREPROCESSING = False  # Set to True to apply preprocessing; False to skip
 # ============================================================================
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
-model = ocr_predictor(pretrained=True)
+model = ocr_predictor(det_arch='db_resnet50', reco_arch='crnn_vgg16_bn', pretrained=True)
 model.to(device)
 
 # ============================================================================
