@@ -1,15 +1,11 @@
 import os
-
-os.environ["DOCTR_CACHE_DIR"] = "./"
-
 import importlib
 import torch
 import torch.nn as nn
+from doctr.io import DocumentFile
 import numpy as np
 
-# === PATCH 1: Override DocumentFile.from_images with a dummy version ===
-from doctr.io import DocumentFile
-
+os.environ["DOCTR_CACHE_DIR"] = "./"
 
 def dummy_from_images(cls, pages):
     # Dummy implementation; this branch should not be used at inference

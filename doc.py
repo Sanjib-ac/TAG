@@ -189,7 +189,8 @@ class CameraOCR:
 
         # Run OCR inference.
         with torch.no_grad():
-            result = self.model(doc)
+            with torch.cuda.amp.autocast():
+                result = self.model(doc)
 
         # Collect recognized words that contain only digits.
         digit_words = [
@@ -203,13 +204,11 @@ class CameraOCR:
         return ",".join(digit_words)
 
     def run(self):
-        """
-        Main loop: captures frames, performs OCR on each frame synchronously,
-        overlays recognized digits (if exactly 10 are present) and FPS, and displays the result.
-        Press 'q' to exit the loop.
-        """
         print("Press 'q' to quit.")
         prev_time = time.time()
+        last_ocr_time = time.time()
+        ocr_interval = 1.0  # seconds between OCR calls
+        ocr_text = ""
 
         while True:
             ret, frame = self.cap.read()
@@ -217,19 +216,20 @@ class CameraOCR:
                 print(f"Camera {self.camera_index}: Error capturing frame.")
                 break
 
-            # Compute the FPS.
             current_time = time.time()
-            fps = 1.0 / (current_time - prev_time)
+            fps = 1.0 / max(current_time - prev_time, 1e-6)
             prev_time = current_time
 
-            # Run OCR synchronously for the current frame.
-            try:
-                ocr_text = self.perform_ocr(frame)
-            except Exception as e:
-                print(f"Camera {self.camera_index}: OCR processing error:", e)
-                ocr_text = ""
+            # Run OCR less frequently.
+            if (current_time - last_ocr_time) >= ocr_interval:
+                try:
+                    ocr_text = self.perform_ocr(frame)
+                except Exception as e:
+                    print(f"Camera {self.camera_index}: OCR processing error:", e)
+                    ocr_text = ""
+                last_ocr_time = current_time
 
-            # Only display if exactly 10 digits are detected.
+            # Verify OCR text format (e.g., exactly 10 digits).
             if re.fullmatch(r'\d{10}', ocr_text):
                 digits_to_display = ocr_text
             else:
@@ -238,15 +238,58 @@ class CameraOCR:
             overlay_text = f"Digits: {digits_to_display}  FPS: {fps:.2f}"
             cv2.putText(frame, overlay_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
                         1, (0, 255, 0), 2, cv2.LINE_AA)
-
-            # Display the frame in a window named by the camera index.
             cv2.imshow(f"Camera Feed {self.camera_index}", frame)
-
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         self.cap.release()
         cv2.destroyAllWindows()
+
+    # def run(self):
+    #     """
+    #     Main loop: captures frames, performs OCR on each frame synchronously,
+    #     overlays recognized digits (if exactly 10 are present) and FPS, and displays the result.
+    #     Press 'q' to exit the loop.
+    #     """
+    #     print("Press 'q' to quit.")
+    #     prev_time = time.time()
+    #
+    #     while True:
+    #         ret, frame = self.cap.read()
+    #         if not ret:
+    #             print(f"Camera {self.camera_index}: Error capturing frame.")
+    #             break
+    #
+    #         # Compute the FPS.
+    #         current_time = time.time()
+    #         fps = 1.0 / (current_time - prev_time)
+    #         prev_time = current_time
+    #
+    #         # Run OCR synchronously for the current frame.
+    #         try:
+    #             ocr_text = self.perform_ocr(frame)
+    #         except Exception as e:
+    #             print(f"Camera {self.camera_index}: OCR processing error:", e)
+    #             ocr_text = ""
+    #
+    #         # Only display if exactly 10 digits are detected.
+    #         if re.fullmatch(r'\d{10}', ocr_text):
+    #             digits_to_display = ocr_text
+    #         else:
+    #             digits_to_display = ""
+    #
+    #         overlay_text = f"Digits: {digits_to_display}  FPS: {fps:.2f}"
+    #         cv2.putText(frame, overlay_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
+    #                     1, (0, 255, 0), 2, cv2.LINE_AA)
+    #
+    #         # Display the frame in a window named by the camera index.
+    #         cv2.imshow(f"Camera Feed {self.camera_index}", frame)
+    #
+    #         if cv2.waitKey(1) & 0xFF == ord('q'):
+    #             break
+    #
+    #     self.cap.release()
+    #     cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
