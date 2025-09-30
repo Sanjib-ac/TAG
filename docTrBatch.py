@@ -253,20 +253,37 @@ class MultiCameraOCR:
                         print("OCR processing error:", e)
                 last_ocr_time = current_time
 
-            # Overlay text and display each camera's frame.
+            # All 10 digits numbers
             for i, frame in enumerate(frames):
                 if frame is not None:
                     ocr_text = ocr_results[i]
-                    # Only display if exactly 10 digits are detected.
-                    if re.fullmatch(r'\d{10}', ocr_text):
-                        digits_to_display = ocr_text
-                    else:
-                        digits_to_display = ""
+
+                    # Extract all 10-digit numbers from the OCR result
+                    all_10_digit_numbers = re.findall(r'\b\d{10}\b', ocr_text)
+
+                    # Join them with a separator ('|') for display
+                    digits_to_display = " | ".join(all_10_digit_numbers)
+
                     overlay_text = f"Digits: {digits_to_display}  FPS: {fps:.2f}"
                     cv2.putText(frame, overlay_text, (10, 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                     window_name = f"Camera Feed {self.camera_indices[i]}"
                     cv2.imshow(window_name, frame)
+
+            # Overlay text and display each camera's frame.
+            # for i, frame in enumerate(frames):
+            #     if frame is not None:
+            #         ocr_text = ocr_results[i]
+            #         # Only display if exactly 10 digits are detected.
+            #         if re.fullmatch(r'\d{10}', ocr_text):
+            #             digits_to_display = ocr_text
+            #         else:
+            #             digits_to_display = ""
+            #         overlay_text = f"Digits: {digits_to_display}  FPS: {fps:.2f}"
+            #         cv2.putText(frame, overlay_text, (10, 30),
+            #                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+            #         window_name = f"Camera Feed {self.camera_indices[i]}"
+            #         cv2.imshow(window_name, frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
@@ -281,6 +298,6 @@ class MultiCameraOCR:
 # ----------------------------------------------------------------------------
 if __name__ == '__main__':
     # For example, process cameras with index 0 and 1.
-    cam_indices = [0, 1]
-    multi_cam = MultiCameraOCR(camera_indices=cam_indices, width=680, height=420, apply_preprocessing=False)
+    cam_indices = [0]
+    multi_cam = MultiCameraOCR(camera_indices=cam_indices, width=1280, height=720, apply_preprocessing=False)
     multi_cam.run()
