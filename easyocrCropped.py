@@ -79,8 +79,10 @@ def main():
             stop_time = time.perf_counter_ns()
             elapsed_time_ms = (stop_time - start_time) / 1000000
 
-            if (len(result0) == 7 or len(result0) == 8) or (len(result1) == 7 or len(result1) == 8):
-                print(f"Time: {elapsed_time_ms:.2f} | Text: {result0}, {result1}")
+            text0 = result0 if len(result0) == 7 or len(result0) == 8 else f"INVALID {result0}"
+            text1 = result1 if len(result1) == 7 or len(result1) == 8 else f"INVALID {result1}"
+
+            print(f"Time: {elapsed_time_ms:.2f} | Text: {text0}, {text1}")
 
             total_time += elapsed_time_ms
 
