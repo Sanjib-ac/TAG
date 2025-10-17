@@ -101,7 +101,7 @@ class MultiCameraOCR:
     A class to capture video from multiple cameras, process frames from all cameras in a batch
     with OCR (using docTR and mixed-precision), and display an overlay with recognized digits and FPS.
     """
-    def __init__(self, camera_indices, width=1280, height=720, apply_preprocessing=False, ocr_interval=1.0):
+    def __init__(self, camera_indices, width=1280, height=720, apply_preprocessing=False, ocr_interval=01.0):
         """
         Parameters:
             camera_indices (list of int): List of camera indices to capture.
@@ -264,7 +264,7 @@ class MultiCameraOCR:
                     # Join them with a separator ('|') for display
                     digits_to_display = " | ".join(all_10_digit_numbers)
 
-                    overlay_text = f"Digits: {digits_to_display}  FPS: {fps:.2f}"
+                    overlay_text = f"Digits: {digits_to_display}  FPSc: {fps:.2f}"
                     cv2.putText(frame, overlay_text, (10, 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                     window_name = f"Camera Feed {self.camera_indices[i]}"
