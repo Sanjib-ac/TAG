@@ -5,15 +5,20 @@ import os
 import logging
 import numpy as np
 
-def get_output_dir(timestamp):
-    output_dir = os.path.join("output", timestamp)
+BATCH_SIZE = 15
+MAX_FRAMES = 1000
+
+def get_output_dir(timestamp_date, timestamp):
+    output_dir = os.path.join("output", timestamp_date, f"{timestamp}_{BATCH_SIZE}")
     os.makedirs(output_dir)
     return output_dir
 
 
 def main():
-    timestamp = time.strftime("%Y-%m-%d-%H-%M-%S")
-    output_dir = get_output_dir(timestamp)
+    timestamp_date = time.strftime("%Y-%m-%d")
+    timestamp_time = time.strftime("%H-%M-%S")
+    timestamp = f"{timestamp_date}-{timestamp_time}"
+    output_dir = get_output_dir(timestamp_date, timestamp)
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
@@ -27,14 +32,16 @@ def main():
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    file_handler = logging.FileHandler(os.path.join(output_dir, f"{timestamp}.log"), mode="a", encoding="utf-8")
+    file_handler = logging.FileHandler(os.path.join(output_dir, f"{timestamp}_{BATCH_SIZE}.log"), mode="a", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 
-    logger.debug("Obtaining camera")
+    logger.debug(f"Batch Size: {BATCH_SIZE}")
+
+    logger.debug("Obtaining camera...")
 
     cap = cv2.VideoCapture(0)
 
@@ -49,12 +56,12 @@ def main():
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps == 0:
         fps = 30
-    video_path = os.path.join(output_dir, f"{timestamp}.mp4")
+    video_path = os.path.join(output_dir, f"{timestamp}_{BATCH_SIZE}.mp4")
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(video_path, fourcc, fps, (frame_x_end - frame_x_start, frame_y_end - frame_y_start))
 
-    logger.debug("Initializing ocr reader")
+    logger.debug("Initializing ocr reader...")
 
     easyocr_reader = utils.init_easyocr()
 
@@ -63,18 +70,27 @@ def main():
     total_ocr_time_ms = 0
 
     loop_continue = True
+    is_first = True
 
     while loop_continue:
+        frames = []
+
         start_time = time.perf_counter_ns()
 
-        ret, frame = cap.read()
+        for i in range(BATCH_SIZE):
+            ret, frame = cap.read()
 
-        frame = frame[frame_y_start:frame_y_end, frame_x_start:frame_x_end]
+            if ret:
+                frame = frame[frame_y_start:frame_y_end, frame_x_start:frame_x_end]
+                frames.append(frame)
+            else:
+                logger.error("Camera could not capture a frame!")
+                loop_continue = False
 
         camera_time = time.perf_counter_ns()
 
-        result = easyocr_reader.readtext(
-            frame,
+        results = easyocr_reader.readtext_batched(
+            frames,
             # decoder='greedy',
             # detail=0,
             # paragraph=True,
@@ -89,30 +105,41 @@ def main():
         camera_time_ms = (camera_time - start_time) / 1e6
         ocr_time_ms = (ocr_time - camera_time) / 1e6
 
-        if count != 0:
+        if not is_first:
             total_time_ms += elapsed_time_ms
             total_ocr_time_ms += ocr_time_ms
 
-        count += 1
+            num_frames = len(frames)
 
-        logger.info(f"Frame: {count} | Elapsed Time: {elapsed_time_ms:.2f} ms | Camera Time: {camera_time_ms:.2f} ms | OCR Time: {ocr_time_ms:.2f} ms")
+            # logger.info(f"Frames: {count}-{count + num_frames} | Elapsed Time: {elapsed_time_ms:.2f} ms | Camera Time: {camera_time_ms:.2f} ms | OCR Time: {ocr_time_ms:.2f} ms")
 
-        for (bbox, text, conf) in result:
-            (top_left, top_right, bottom_right, bottom_left) = bbox
-            logger.info(f'Text: {text!r} | Confidence: {(conf * 100):.2f}%')
-            cv2.rectangle(frame, (int(top_left[0]), int(top_left[1])), (int(bottom_right[0]), int(bottom_right[1])), (255, 0, 0), 2)
+            logger.info(f"Frames: {count + 1}-{count + num_frames} | OCR Time: {ocr_time_ms:.2f} ms")
 
-        out.write(frame)
+            count += num_frames
 
-        cv2.imshow('Camera', frame)
+            for i in range(num_frames):
+                frame = frames[i]
+                result = results[i]
 
-        # Press 'q' to exit the loop
-        if cv2.waitKey(1) == ord('q'):
-            loop_continue = False
+                for (bbox, text, conf) in result:
+                    (top_left, top_right, bottom_right, bottom_left) = bbox
+                    logger.debug(f'Text: {text!r} | Confidence: {(conf * 100):.2f}%')
+                    cv2.rectangle(frame, (int(top_left[0]), int(top_left[1])), (int(bottom_right[0]), int(bottom_right[1])), (255, 0, 0), 2)
 
-    avg_time_ms = total_time_ms / (count - 1)
-    avg_ocr_time_ms = total_ocr_time_ms / (count - 1)
-    logger.info(f"Avg Elapsed Time: {avg_time_ms:.2f} ms | Avg OCR Time: {avg_ocr_time_ms:.2f} ms")
+                out.write(frame)
+
+                cv2.imshow('Camera', frame)
+
+                # Press 'q' to exit the loop
+                if cv2.waitKey(1) == ord('q') or count >= MAX_FRAMES:
+                    loop_continue = False
+
+        else:
+            is_first = False
+
+    avg_time_ms = total_time_ms / count
+    avg_ocr_time_ms = total_ocr_time_ms / count
+    logger.info(f"Avg Elapsed Time: {avg_time_ms:.2f} ms | Avg OCR Time per Img: {avg_ocr_time_ms:.2f} ms")
 
     cap.release()
     out.release()
