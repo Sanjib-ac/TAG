@@ -48,10 +48,10 @@ def main():
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    frame_y_start = int(frame_height * 0.45)
-    frame_y_end = int(frame_height* 0.65)
-    frame_x_start = int(frame_width * 0.125)
-    frame_x_end = int(frame_width * 0.55)
+    frame_y_start = int(frame_height * 0.4)
+    frame_y_end = int(frame_height * 0.7)
+    frame_x_start = int(frame_width * 0.3)
+    frame_x_end = int(frame_width * 0.7)
 
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps == 0:
@@ -82,6 +82,7 @@ def main():
 
             if ret:
                 frame = frame[frame_y_start:frame_y_end, frame_x_start:frame_x_end]
+                # _, frame = cv2.threshold(frame, 75, 255, cv2.THRESH_BINARY)
                 frames.append(frame)
             else:
                 logger.error("Camera could not capture a frame!")
@@ -101,11 +102,11 @@ def main():
 
         ocr_time = time.perf_counter_ns()
 
-        elapsed_time_ms = (ocr_time - start_time) / 1e6
-        camera_time_ms = (camera_time - start_time) / 1e6
-        ocr_time_ms = (ocr_time - camera_time) / 1e6
-
         if not is_first:
+            elapsed_time_ms = (ocr_time - start_time) / 1e6
+            camera_time_ms = (camera_time - start_time) / 1e6
+            ocr_time_ms = (ocr_time - camera_time) / 1e6
+
             total_time_ms += elapsed_time_ms
             total_ocr_time_ms += ocr_time_ms
 
@@ -133,6 +134,9 @@ def main():
                 # Press 'q' to exit the loop
                 if cv2.waitKey(1) == ord('q') or count >= MAX_FRAMES:
                     loop_continue = False
+
+            if num_frames == 0:
+                loop_continue = False
 
         else:
             is_first = False
