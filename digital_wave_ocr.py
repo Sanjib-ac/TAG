@@ -51,7 +51,7 @@ def main():
     frame_y_start = int(frame_height * 0.4)
     frame_y_end = int(frame_height * 0.7)
     frame_x_start = int(frame_width * 0.3)
-    frame_x_end = int(frame_width * 0.7)
+    frame_x_end = int(frame_width * 0.8)
 
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps == 0:
@@ -126,6 +126,7 @@ def main():
                     (top_left, top_right, bottom_right, bottom_left) = bbox
                     logger.debug(f'Text: {text!r} | Confidence: {(conf * 100):.2f}%')
                     cv2.rectangle(frame, (int(top_left[0]), int(top_left[1])), (int(bottom_right[0]), int(bottom_right[1])), (255, 0, 0), 2)
+                    cv2.putText(frame, text, (int(top_left[0]), int(top_left[1]) - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
                 out.write(frame)
 
